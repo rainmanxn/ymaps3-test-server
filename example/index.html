@@ -1,0 +1,113 @@
+<!doctype html>
+<html>
+    <head>
+        <title>Vanila example @yandex/ymaps3-test-server</title>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1" />
+        <link
+            href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css"
+            rel="stylesheet"
+            integrity="sha384-T3c6CoIi6uLrA9TneNEoa7RxnatzjcDSCmG1MXxSR1GAsXEV/Dwwykc2MPK8M2HN"
+            crossorigin="anonymous"
+        />
+        <script src="https://api-maps.yandex.ru/v3/?apikey=efd40fee-7ab7-48f8-9a15-48ce048bcc90&lang=en_US"></script>
+        <script>
+            window.module = {exports: {}};
+        </script>
+        <script src="https://cdn.jsdelivr.net/npm/lodash.throttle@4.1.1/index.min.js"></script>
+        <script src="common.js"></script>
+        <script>
+            window.map = null;
+
+            main();
+            async function main() {
+                await ymaps3.ready;
+                ymaps3.strictMode = true;
+                const {
+                    YMap,
+                    YMapDefaultSchemeLayer,
+                    YMapDefaultFeaturesLayer,
+                    YMapListener,
+                    YMapControls,
+                    YMapCollection,
+                    YMapTileDataSource,
+                    YMapLayer
+                } = ymaps3;
+
+                const {YMapZoomControl} = await ymaps3.import('@yandex/ymaps3-controls@0.0.1');
+                const {YMapEntityTileLoader} = await ymaps3.import('@yandex/ymaps3-entity-tile-loader');
+
+                map = new YMap(
+                    document.getElementById('app'),
+                    {
+                        // mode: 'raster',
+                        location: LOCATION,
+                        behaviors: [
+                            'drag',
+                            'pinchZoom',
+                            'scrollZoom',
+                            'magnifier',
+                            'oneFingerZoom',
+                            'mouseRotate',
+                            'mouseTilt',
+                            'pinchRotate',
+                            'panTilt'
+                        ],
+                        zoomRange: ZOOM_RANGE
+                    },
+                    [
+                        new YMapDefaultSchemeLayer(),
+                        new YMapDefaultFeaturesLayer(),
+                        new YMapControls({position: 'right'}, [new YMapZoomControl({})])
+                    ]
+                );
+
+                // if (SHOW_CELLS) {
+                //     map.addChild(new YMapTileDataSource({id: layerId, raster: dataSource})).addChild(
+                //         new YMapLayer({id: layerId, source: layerId, type: layerId})
+                //     );
+                // }
+                console.log('MODE', SHOW_CELLS);
+
+                map.addChild(
+                    new YMapEntityTileLoader({
+                        /**
+                         * By default, when changing tiles, old points are immediately deleted.
+                         * But the same points may appear in the new tile, then there was no point in deleting them.
+                         * Set the delay for applying deletion operations
+                         */
+                        delayExecution: 500,
+                        tileSize: TILE_SIZE, // World is 256x256 pixels on 0 zoom in YMaps
+                        getFeatureId: (feature) => `m${feature.id}`,
+                        fetchTile: fetchTile,
+
+                        entity: makeEntity.bind(null, map)
+                    })
+                );
+            }
+        </script>
+
+        <link rel="stylesheet" href="common.css" />
+    </head>
+    <body>
+        <div class="toolbar">
+            <div class="btn-group">
+                <a href="?mode=tile" class="btn btn-secondary btn-sm btn-tile">Tile</a>
+                <a href="?mode=tile-clusterer" class="btn btn-secondary btn-sm btn-tile-clusterer"
+                    >Tile with Clusterer</a
+                >
+                <a href="?mode=bbox" class="btn btn-secondary btn-sm btn-bbox">BBox</a>
+            </div>
+        </div>
+        <script>
+            const btn = document.querySelector('.btn-' + MODE);
+            if (btn) {
+                btn.classList.add('active');
+                btn.setAttribute('aria-current', 'page');
+            }
+
+            document.querySelector('.toolbar').style.display = SHOW_MODE_SWITCHER ? 'block' : 'none';
+        </script>
+        <div id="app"></div>
+    </body>
+</html>
